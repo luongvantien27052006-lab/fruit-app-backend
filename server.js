@@ -74,7 +74,7 @@ app.post("/upload", upload.single("image"), (req, res) => {
     }
 
     res.json({
-      imageUrl: `${BASE_URL}/uploads/${req.file.filename}`,
+      imageUrl: '${BASE_URL}/uploads/${req.file.filename}',
     });
   } catch (err) {
     console.error("UPLOAD ERROR:", err.message);
