@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////////////////////////////////////
+// 🍹 PRODUCT
+//////////////////////////////////////////////////////
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  price       Int
+  image       String?
+  description String?
+  type        String @default("fruit")
+  createdAt   DateTime @default(now())
+
+  orderItems  OrderItem[]
+}
+
+//////////////////////////////////////////////////////
+// ⚙️ OPTION
+//////////////////////////////////////////////////////
+
+model Option {
+  id    Int    @id @default(autoincrement())
+  name  String
+  type  String
+  price Int
+
+  // 🔥 FIX CHÍNH Ở ĐÂY (bổ sung relation ngược)
+  orderItemOptions OrderItemOption[]
+}
+
+//////////////////////////////////////////////////////
+// 🛒 ORDER
+//////////////////////////////////////////////////////
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  total     Int
+  createdAt DateTime @default(now())
+
+  items     OrderItem[]
+}
+
+//////////////////////////////////////////////////////
+// 🧾 ORDER ITEM
+//////////////////////////////////////////////////////
+
+model OrderItem {
+  id        Int @id @default(autoincrement())
+  quantity  Int
+  price     Int
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  orderId   Int
+  order     Order @relation(fields: [orderId], references: [id])
+
+  options   OrderItemOption[]
+}
+
+//////////////////////////////////////////////////////
+// 🔗 ORDER ITEM OPTION
+//////////////////////////////////////////////////////
+
+model OrderItemOption {
+  id Int @id @default(autoincrement())
+
+  orderItemId Int
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+
+  optionId Int
+  option   Option @relation(fields: [optionId], references: [id])
+}
