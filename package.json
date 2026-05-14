@@ -1,15 +1,16 @@
 {
   "name": "fruit-app-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Fruit App Backend API",
+  "main": "server.js",
   "type": "commonjs",
+
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "postinstall": "prisma generate"
+  },
+
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "cors": "^2.8.6",
