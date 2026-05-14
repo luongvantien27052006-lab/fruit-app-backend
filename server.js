@@ -1,4 +1,3 @@
-```js
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
@@ -26,7 +25,7 @@ const PORT = process.env.PORT || 5000;
 const BASE_URL =
   process.env.NODE_ENV === "production"
     ? process.env.RAILWAY_PUBLIC_DOMAIN
-      ? 'https://${process.env.RAILWAY_PUBLIC_DOMAIN}'
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
       : "https://your-domain.up.railway.app"
     : "http://192.168.1.101:5000";
 
@@ -43,9 +42,9 @@ app.use("/uploads", express.static("uploads"));
 async function checkDB() {
   try {
     await prisma.$connect();
-    console.log("✅ Database connected");
+    console.log("Database connected");
   } catch (err) {
-    console.error("❌ Database error:", err.message);
+    console.error("Database error:", err.message);
   }
 }
 
@@ -74,7 +73,7 @@ app.post("/upload", upload.single("image"), (req, res) => {
     }
 
     res.json({
-      imageUrl: '${BASE_URL}/uploads/${req.file.filename}',
+      imageUrl: `${BASE_URL}/uploads/${req.file.filename}`,
     });
   } catch (err) {
     console.error("UPLOAD ERROR:", err.message);
@@ -88,7 +87,7 @@ app.post("/upload", upload.single("image"), (req, res) => {
 // ================= TEST =================
 
 app.get("/", (req, res) => {
-  res.send("API running 🚀");
+  res.send("API running");
 });
 
 // ================= PRODUCTS =================
@@ -108,7 +107,7 @@ app.get("/products", async (req, res) => {
     console.error("GET PRODUCTS ERROR:", err.message);
 
     res.status(500).json({
-      error: "Không lấy được sản phẩm",
+      error: "Khong lay duoc san pham",
     });
   }
 });
@@ -127,7 +126,7 @@ app.get("/products/:id", async (req, res) => {
 
     if (!product) {
       return res.status(404).json({
-        error: "Không tìm thấy sản phẩm",
+        error: "Khong tim thay san pham",
       });
     }
 
@@ -136,7 +135,7 @@ app.get("/products/:id", async (req, res) => {
     console.error("GET PRODUCT ERROR:", err.message);
 
     res.status(500).json({
-      error: "Lỗi lấy sản phẩm",
+      error: "Loi lay san pham",
     });
   }
 });
@@ -154,7 +153,7 @@ app.post("/products", async (req, res) => {
 
     if (!name || !price) {
       return res.status(400).json({
-        error: "Thiếu dữ liệu",
+        error: "Thieu du lieu",
       });
     }
 
@@ -174,7 +173,7 @@ app.post("/products", async (req, res) => {
     console.error("CREATE PRODUCT ERROR:", err.message);
 
     res.status(500).json({
-      error: "Lỗi tạo sản phẩm",
+      error: "Loi tao san pham",
     });
   }
 });
@@ -212,7 +211,7 @@ app.put("/products/:id", async (req, res) => {
     console.error("UPDATE PRODUCT ERROR:", err.message);
 
     res.status(500).json({
-      error: "Lỗi update sản phẩm",
+      error: "Loi update san pham",
     });
   }
 });
@@ -232,13 +231,13 @@ app.delete("/products/:id", async (req, res) => {
     io.emit("product_updated");
 
     res.json({
-      message: "Đã xoá sản phẩm",
+      message: "Da xoa san pham",
     });
   } catch (err) {
     console.error("DELETE PRODUCT ERROR:", err.message);
 
     res.status(500).json({
-      error: "Lỗi xoá sản phẩm",
+      error: "Loi xoa san pham",
     });
   }
 });
@@ -256,7 +255,7 @@ app.get("/options", async (req, res) => {
     console.error("GET OPTIONS ERROR:", err.message);
 
     res.status(500).json({
-      error: "Lỗi lấy option",
+      error: "Loi lay option",
     });
   }
 });
@@ -284,7 +283,7 @@ app.post("/options", async (req, res) => {
     console.error("CREATE OPTION ERROR:", err.message);
 
     res.status(500).json({
-      error: "Lỗi tạo option",
+      error: "Loi tao option",
     });
   }
 });
@@ -299,7 +298,7 @@ app.post("/orders", async (req, res) => {
 
     if (!items || !items.length) {
       return res.status(400).json({
-        error: "Không có sản phẩm",
+        error: "Khong co san pham",
       });
     }
 
@@ -334,7 +333,7 @@ app.post("/orders", async (req, res) => {
     console.error("CREATE ORDER ERROR:", err.message);
 
     res.status(500).json({
-      error: "Lỗi tạo order",
+      error: "Loi tao order",
     });
   }
 });
@@ -363,7 +362,7 @@ app.get("/orders", async (req, res) => {
     console.error("GET ORDERS ERROR:", err.message);
 
     res.status(500).json({
-      error: "Lỗi lấy order",
+      error: "Loi lay order",
     });
   }
 });
@@ -371,6 +370,5 @@ app.get("/orders", async (req, res) => {
 // ================= START SERVER =================
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server running at ${BASE_URL}`);
+  console.log("Server running at " + BASE_URL);
 });
-```
