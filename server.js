@@ -8,49 +8,69 @@ const { Server } = require("socket.io");
 
 const app = express();
 
-// ================= SERVER =================
+// ======================
+// SERVER
+// ======================
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
     origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
   },
 });
 
-// ================= CONFIG =================
+// ======================
+// CONFIG
+// ======================
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 const BASE_URL =
   process.env.NODE_ENV === "production"
-    ? process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : "https://your-domain.up.railway.app"
-    : "http://192.168.1.101:5000";
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : `http://192.168.1.10:${PORT}`;
 
-// ================= MIDDLEWARE =================
+// ======================
+// MIDDLEWARE
+// ======================
 
 app.use(cors());
 
 app.use(express.json());
 
+app.use(express.urlencoded({ extended: true }));
+
 app.use("/uploads", express.static("uploads"));
 
-// ================= DB CHECK =================
+// ======================
+// DATABASE CHECK
+// ======================
 
-async function checkDB() {
+async function connectDB() {
   try {
     await prisma.$connect();
+
     console.log("Database connected");
-  } catch (err) {
-    console.error("Database error:", err.message);
+  } catch (error) {
+    console.error("Database connection error:", error);
   }
 }
 
-checkDB();
+connectDB();
 
-// ================= UPLOAD =================
+// ======================
+// ROOT
+// ======================
+
+app.get("/", (req, res) => {
+  return res.status(200).send("API running");
+});
+
+// ======================
+// MULTER
+// ======================
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -58,84 +78,100 @@ const storage = multer.diskStorage({
   },
 
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+    const uniqueName =
+      Date.now() + path.extname(file.originalname);
+
+    cb(null, uniqueName);
   },
 });
 
 const upload = multer({ storage });
 
-app.post("/upload", upload.single("image"), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        error: "No file uploaded",
+// ======================
+// UPLOAD IMAGE
+// ======================
+
+app.post(
+  "/upload",
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image uploaded",
+        });
+      }
+
+      const imageUrl =
+        BASE_URL + "/uploads/" + req.file.filename;
+
+      return res.status(200).json({
+        success: true,
+        imageUrl,
+      });
+    } catch (error) {
+      console.error("UPLOAD ERROR:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: error.message,
       });
     }
-
-    res.json({
-      imageUrl: `${BASE_URL}/uploads/${req.file.filename}`,
-    });
-  } catch (err) {
-    console.error("UPLOAD ERROR:", err.message);
-
-    res.status(500).json({
-      error: "Upload failed",
-    });
   }
-});
+);
 
-// ================= TEST =================
-
-app.get("/", (req, res) => {
-  res.send("API running");
-});
-
-// ================= PRODUCTS =================
+// ======================
+// PRODUCTS
+// ======================
 
 // GET ALL PRODUCTS
 
 app.get("/products", async (req, res) => {
   try {
-    const products = await prisma.product.findMany({
-      orderBy: {
-        id: "desc",
-      },
-    });
+    console.log("GET PRODUCTS");
 
-    res.json(products);
-  } catch (err) {
-    console.error("GET PRODUCTS ERROR:", err.message);
+    const products =
+      await prisma.product.findMany();
 
-    res.status(500).json({
-      error: "Khong lay duoc san pham",
+    return res.status(200).json(products);
+  } catch (error) {
+    console.error("PRODUCT ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
 
-// GET ONE PRODUCT
+// GET PRODUCT BY ID
 
 app.get("/products/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
 
-    const product = await prisma.product.findUnique({
-      where: {
-        id,
-      },
-    });
+    const product =
+      await prisma.product.findUnique({
+        where: {
+          id,
+        },
+      });
 
     if (!product) {
       return res.status(404).json({
-        error: "Khong tim thay san pham",
+        success: false,
+        message: "Product not found",
       });
     }
 
-    res.json(product);
-  } catch (err) {
-    console.error("GET PRODUCT ERROR:", err.message);
+    return res.status(200).json(product);
+  } catch (error) {
+    console.error("GET PRODUCT ERROR:", error);
 
-    res.status(500).json({
-      error: "Loi lay san pham",
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
@@ -149,31 +185,36 @@ app.post("/products", async (req, res) => {
       price,
       image,
       description,
+      category,
     } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({
-        error: "Thieu du lieu",
+        success: false,
+        message: "Missing name or price",
       });
     }
 
-    const product = await prisma.product.create({
-      data: {
-        name,
-        price: Number(price),
-        image,
-        description,
-      },
-    });
+    const product =
+      await prisma.product.create({
+        data: {
+          name,
+          price: Number(price),
+          image: image || "",
+          description: description || "",
+          category: category || "Khac",
+        },
+      });
 
     io.emit("product_updated");
 
-    res.json(product);
-  } catch (err) {
-    console.error("CREATE PRODUCT ERROR:", err.message);
+    return res.status(201).json(product);
+  } catch (error) {
+    console.error("CREATE PRODUCT ERROR:", error);
 
-    res.status(500).json({
-      error: "Loi tao san pham",
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
@@ -189,29 +230,33 @@ app.put("/products/:id", async (req, res) => {
       price,
       image,
       description,
+      category,
     } = req.body;
 
-    const updatedProduct = await prisma.product.update({
-      where: {
-        id,
-      },
+    const product =
+      await prisma.product.update({
+        where: {
+          id,
+        },
 
-      data: {
-        name,
-        price: Number(price),
-        image,
-        description,
-      },
-    });
+        data: {
+          name,
+          price: Number(price),
+          image,
+          description,
+          category,
+        },
+      });
 
     io.emit("product_updated");
 
-    res.json(updatedProduct);
-  } catch (err) {
-    console.error("UPDATE PRODUCT ERROR:", err.message);
+    return res.status(200).json(product);
+  } catch (error) {
+    console.error("UPDATE PRODUCT ERROR:", error);
 
-    res.status(500).json({
-      error: "Loi update san pham",
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
@@ -230,32 +275,38 @@ app.delete("/products/:id", async (req, res) => {
 
     io.emit("product_updated");
 
-    res.json({
-      message: "Da xoa san pham",
+    return res.status(200).json({
+      success: true,
+      message: "Product deleted",
     });
-  } catch (err) {
-    console.error("DELETE PRODUCT ERROR:", err.message);
+  } catch (error) {
+    console.error("DELETE PRODUCT ERROR:", error);
 
-    res.status(500).json({
-      error: "Loi xoa san pham",
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
 
-// ================= OPTIONS =================
+// ======================
+// OPTIONS
+// ======================
 
 // GET OPTIONS
 
 app.get("/options", async (req, res) => {
   try {
-    const options = await prisma.option.findMany();
+    const options =
+      await prisma.option.findMany();
 
-    res.json(options);
-  } catch (err) {
-    console.error("GET OPTIONS ERROR:", err.message);
+    return res.status(200).json(options);
+  } catch (error) {
+    console.error("OPTIONS ERROR:", error);
 
-    res.status(500).json({
-      error: "Loi lay option",
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
@@ -270,25 +321,29 @@ app.post("/options", async (req, res) => {
       price,
     } = req.body;
 
-    const option = await prisma.option.create({
-      data: {
-        name,
-        type,
-        price: Number(price),
-      },
-    });
+    const option =
+      await prisma.option.create({
+        data: {
+          name,
+          type,
+          price: Number(price),
+        },
+      });
 
-    res.json(option);
-  } catch (err) {
-    console.error("CREATE OPTION ERROR:", err.message);
+    return res.status(201).json(option);
+  } catch (error) {
+    console.error("CREATE OPTION ERROR:", error);
 
-    res.status(500).json({
-      error: "Loi tao option",
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
 
-// ================= ORDERS =================
+// ======================
+// ORDERS
+// ======================
 
 // CREATE ORDER
 
@@ -296,44 +351,47 @@ app.post("/orders", async (req, res) => {
   try {
     const { items } = req.body;
 
-    if (!items || !items.length) {
+    if (!items || !Array.isArray(items)) {
       return res.status(400).json({
-        error: "Khong co san pham",
+        success: false,
+        message: "Items invalid",
       });
     }
 
     let total = 0;
 
     for (const item of items) {
-      total += item.price * item.quantity;
+      total +=
+        Number(item.price) *
+        Number(item.quantity);
     }
 
-    const order = await prisma.order.create({
-      data: {
-        total,
+    const order =
+      await prisma.order.create({
+        data: {
+          total,
 
-        items: {
-          create: items.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-
-            options: {
-              create: item.options.map((optId) => ({
-                optionId: optId,
-              })),
-            },
-          })),
+          items: {
+            create: items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+          },
         },
-      },
-    });
 
-    res.json(order);
-  } catch (err) {
-    console.error("CREATE ORDER ERROR:", err.message);
+        include: {
+          items: true,
+        },
+      });
 
-    res.status(500).json({
-      error: "Loi tao order",
+    return res.status(201).json(order);
+  } catch (error) {
+    console.error("CREATE ORDER ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
@@ -342,33 +400,64 @@ app.post("/orders", async (req, res) => {
 
 app.get("/orders", async (req, res) => {
   try {
-    const orders = await prisma.order.findMany({
-      include: {
-        items: {
-          include: {
-            options: true,
-            product: true,
+    const orders =
+      await prisma.order.findMany({
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
 
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
 
-    res.json(orders);
-  } catch (err) {
-    console.error("GET ORDERS ERROR:", err.message);
+    return res.status(200).json(orders);
+  } catch (error) {
+    console.error("GET ORDERS ERROR:", error);
 
-    res.status(500).json({
-      error: "Loi lay order",
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });
 
-// ================= START SERVER =================
+// ======================
+// 404
+// ======================
 
-server.listen(PORT, () => {
-  console.log("Server running at " + BASE_URL);
+app.use((req, res) => {
+  return res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
+
+// ======================
+// GLOBAL ERROR
+// ======================
+
+app.use((error, req, res, next) => {
+  console.error("GLOBAL ERROR:", error);
+
+  return res.status(500).json({
+    success: false,
+    message: error.message,
+  });
+});
+
+// ======================
+// START SERVER
+// ======================
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(
+    "Server running on port " + PORT
+  );
+
+  console.log("Base URL: " + BASE_URL);
 });
