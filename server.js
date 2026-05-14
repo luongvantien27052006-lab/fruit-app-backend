@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 5000;
 const BASE_URL =
   process.env.NODE_ENV === "production"
     ? process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      ? 'https://${process.env.RAILWAY_PUBLIC_DOMAIN}'
       : "https://your-domain.up.railway.app"
     : "http://192.168.1.101:5000";
 
